@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helmet & Plate Detection</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            padding: 40px;
+        }
+        h1 { margin-bottom: 30px; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover { background-color: #0056b3; }
+        #resultContainer {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+        }
+        img, video {
+            max-width: 90%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>Helmet & License Plate Detection</h1>
+    
+    <!-- Hidden file input that accepts images and videos -->
+    <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
+    
+    <!-- The Button -->
+    <button class="btn" onclick="document.getElementById('fileInput').click()">Choose a File</button>
+    <button class="btn" onclick="startLiveFeed()" style="margin-left: 10px; background-color: #28a745;">Live Monitor</button>
+    
+    <div id="status"></div>
+    <div id="resultContainer"></div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        const resultContainer = document.getElementById('resultContainer');
+
+        function startLiveFeed() {
+            status.innerText = "Starting Live Feed...";
+            resultContainer.innerHTML = "";
+            const img = document.createElement('img');
+            img.src = "/video_feed";
+            resultContainer.appendChild(img);
+        }
+
+        fileInput.addEventListener('change', async () => {
+            if (fileInput.files.length === 0) return;
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            status.innerText = "Processing... Please wait.";
+            resultContainer.innerHTML = "";
+
+            try {
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || "Server error");
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const type = response.headers.get('content-type');
+
+                if (type && type.includes('video')) {
+                    const video = document.createElement('video');
+                    video.src = url;
+                    video.controls = true;
+                    video.autoplay = true;
+                    resultContainer.appendChild(video);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    resultContainer.appendChild(img);
+                }
+                status.innerText = "Detection Complete!";
+            } catch (e) {
+                status.innerText = "Error: " + e.message;
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+</html>
